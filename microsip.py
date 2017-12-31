@@ -19,8 +19,9 @@
 import argparse
 import collections
 import hashlib
-import socket
 import os
+import socket
+import select
 import random
 import re
 import sys
@@ -240,51 +241,6 @@ class ResponseParser:
         # Return true if the callback has been called
         return response[0]
 
-    def parse_from_socket(self, sock, callback):
-        """
-        Same as parser, but reads from the given socket instead.
-        """
-        response = False
-        while True:
-            data = sock.recv(4096)
-            if len(data) == 0:
-                break
-            if self.feed(data, callback):
-                response = True
-        return response
-
-
-class SDP:
-    """
-    The SDP class provides functions to assemble session description protocol
-    (SDP) data. This is currently not used.
-    """
-
-    @staticmethod
-    def make_sdp_packet(local_ip, user, session_id, session_version, media_port):
-        res = b'v=0\r\n'
-        res += (
-            b'o=' + user.encode('ascii') +
-            b' ' + str(session_id).encode('ascii') +
-            b' ' + str(session_version).encode('ascii') +
-            b' IN ');
-        if ':' in local_ip:
-            res += b'IP6 '
-        else:
-            res += b'IP4 '
-        res += local_ip.encode('ascii') + b'\r\n'
-        res += b's=Talk\r\n'
-        res += b'c=IN '
-        if ':' in local_ip:
-            res += b'IP6 '
-        else:
-            res += b'IP4 '
-        res += local_ip.encode('ascii') + b'\r\n'
-        res += b't=0 0\r\n'
-        res += b'm=audio ' + str(media_port).encode('ascii') + b' RTP/AVP 0 8 101\r\n'
-        res += b'a=rtpmap:101 telephone-event/8000\r\n'
-        res += b'a=fmtp:101 0-11\r\n'
-        return res
 
 class SIP:
     """
@@ -341,16 +297,11 @@ class SIP:
             res += str(random.randint(1 if i == 0 else 0, 9))
         return res
 
-    def make_tag(self, args):
-        h = hashlib.new('sha256')
-        h.update(self.seed)
-        for key, value in sorted(args.items()):
-            h.update(str(key).encode('ascii'))
-        return h.hexdigest()[0:9]
+    def make_tag(self):
+        return self.make_random_digits(10)
 
-    def make_branch(self, seq):
-        return hashlib.sha512(
-            self.seed + str(seq).encode('ascii')).hexdigest()[0:17]
+    def make_branch(self):
+        return 'z9hG4bK' + self.make_random_digits(10)
 
     def make_invite_sip_packet(self,
             remote_id, remote_host,
@@ -372,11 +323,9 @@ class SIP:
         fields['Contact'] = (
             '<sip:' + self.user + '@' + self.local_ip +
             ':' + str(self.local_port) + ';transport=tcp>')
-#        fields['Content-Type'] = 'application/sdp'
+        fields['Content-Type'] = 'application/sdp'
         fields['Allow'] = self.ALLOW
         fields['Max-Forwards'] = '70'
-        fields['User-Agent'] = 'microsip/1.0'
-        fields['Subject'] = 'Phone call'
 
         if (not realm is None) and (not nonce is None):
             fields['Authorization'] = (
@@ -390,16 +339,9 @@ class SIP:
                       "algorithm=\"MD5\"")
 
         return self.make_sip_packet('INVITE', uri, fields)
-#            SDP.make_sdp_packet(
-#                self.local_ip, self.user,
-#                self.session_id, self.session_version,
-#                self.media_port));
 
 
-    def make_cancel_sip_packet(self,
-            remote_id, remote_host,
-            branch, tag, remote_tag,
-            call_id, seq, realm=None, nonce=None):
+    def make_cancel_sip_packet(self, remote_id, remote_host, branch, tag, call_id, seq):
         # Assemble the request uri
         uri = 'sip:' + remote_id + '@' + remote_host;
 
@@ -415,42 +357,30 @@ class SIP:
         fields['Call-ID'] = str(call_id)
         fields['CSeq'] = str(seq) + ' CANCEL'
         fields['Max-Forwards'] = '70'
-        fields['User-Agent'] = 'microsip/1.0'
-
-#        if (not realm is None) and (not nonce is None):
-#            fields['Authorization'] = (
-#                'Digest username=\"' + self.user + "\", " +
-#                          "realm=\"" + realm + "\", " +
-#                          "nonce=\"" + nonce + "\", " +
-#                            "uri=\"" + uri + "\", " +
-#                       "response=\"" + digest_response(
-#                            self.user, self.password,
-#                            realm, nonce, 'CANCEL', uri) + "\", " +
-#                      "algorithm=\"MD5\"")
 
         return self.make_sip_packet('CANCEL', uri, fields)
 
     def make_socket(self):
         sock = socket.create_connection((self.gateway, self.port))
+        sock.setblocking(0)
         self.local_ip, self.local_port = sock.getsockname()[0:2]
         return sock
 
     def call(self, remote_id, delay=10.0):
         # Generate a call_id and increase the sequence number
         self.seq += 1
-        branch = self.make_branch(self.seq)
-        tag = self.make_tag(locals())
+        tag = self.make_tag()
         call_id = self.make_random_digits(10)
 
         # Object containing the state of the s
         state = {
             'done': False,
-            'status': 'invite',
+            'status': 'send_invite',
             'tries': 0,
             'realm': None,
             'nonce': None,
-            'had_response': True,
-            'remote_tag': None
+            'delay_start': 0,
+            'ack_stack': []
         }
 
         def error(msg):
@@ -459,9 +389,6 @@ class SIP:
 
         # Function advancing the state machine
         def handle_response(res):
-            # We had a response
-            state['had_response'] = True
-
             # Debug message
             sys.stderr.write('Response: '
                 + res.protocol + ' '
@@ -489,51 +416,74 @@ class SIP:
                     error('Could not parse "WWW-Authenticate" header, authentication methods other than digest are not supported.')
                 state['realm'] = match.group(1)
                 state['nonce'] = match.group(2)
-            elif res.code == 100:
+
+                # Ack nowledge the error
+                state['ack_stack'].append(res.fields)
+
+                # Try again
+                self.seq += 1
+                if state['status'].startswith('done_'):
+                    state['status'] = state['status'][5:]
+            elif res.code == 100 or res.code == 101:
                 # Ignore this response, everything is fine
                 pass
-            elif res.code == 183:
+            elif res.code == 183 or res.code == 180:
                 if not 'From' in res.fields:
                     error('Did not find "To" field')
                     return
-                state['remote_tag'] = str(res.fields['To'], 'ascii').split(';', 2)[-1].split("tag=",2)[-1].strip()
-                state['status'] = 'ringing' # Phones are ringing
+                state['status'] = 'delay' # Phones are ringing, wait
+                state['delay_start'] = time.time()
+            elif res.code == 200: # OK
+                if state['status'] == 'done_send_cancel':
+                    state['done'] = True
+                else:
+                    state['status'] = 'send_cancel'
+            elif res.code == 603: # Decline
+                state['status'] = 'send_cancel'
             elif res.code == 487:
                 state['done'] = True
             elif res.code >= 400:
+                error('Unhandled error.\n')
                 state['done'] = True
-            else:
-                # We should not get here if the response has been handled
-                error('I\'m lost. Did not handle response.\n')
 
-        while not state['done'] and state['had_response']:
-            with self.make_socket() as sock:
-                if state['status'] == 'invite':
-                    sys.stderr.write('Sending INVITE to sip:'
+        writebuf = bytearray()
+        with self.make_socket() as sock:
+            while not state['done']:
+                if state['status'] == 'send_invite':
+                    sys.stderr.write('Request : INVITE sip:'
                         + remote_id + '@' + self.gateway + '\n')
-                    sock.send(
-                        self.make_invite_sip_packet(
+                    branch = self.make_branch()
+                    writebuf += self.make_invite_sip_packet(
                             remote_id, self.gateway,
-                            branch, tag,
-                            call_id, self.seq,
-                            state['realm'], state['nonce']))
-                    sock.shutdown(socket.SHUT_WR)
-                elif state['status'] == 'ringing':
-                    time.sleep(delay)
-                    sys.stderr.write('Sending CANCEL to sip:'
+                            branch, tag, call_id, self.seq,
+                            state['realm'], state['nonce'])
+                    state['status'] = 'done_send_invite'
+                elif state['status'] == 'send_cancel':
+                    sys.stderr.write('Request : CANCEL sip:'
                         + remote_id + '@' + self.gateway + '\n')
-                    sock.send(
-                        self.make_cancel_sip_packet(
+                    writebuf += self.make_cancel_sip_packet(
                             remote_id, self.gateway,
-                            branch, tag, state['remote_tag'],
-                            call_id, self.seq,
-                            state['realm'], state['nonce']))
-                    sock.shutdown(socket.SHUT_WR)
+                            branch, tag, call_id, self.seq)
+                    state['status'] = 'done_send_cancel'
+                elif state['status'] == 'delay':
+                    if time.time() - state['delay_start'] > delay:
+                        state['status'] = 'send_cancel'
 
-                # Read the responses
-                state['had_response'] = False
-                ResponseParser().parse_from_socket(sock, handle_response)
-                sock.close()
+                # Check whether we can read or write from the socket
+                can_read, can_write, in_error = \
+                    select.select([sock], [sock], [sock], 10e-3)
+                if len(in_error) > 0:
+                    error('Socket error')
+                else:
+                    if len(can_read) > 0:
+                        readbuf = sock.recv(4096)
+                        ResponseParser().feed(readbuf, handle_response)
+                    if len(can_write) > 0 and len(writebuf) > 0:
+                        sent = sock.send(writebuf)
+                        if sent == 0:
+                            error('Error while writing to socket')
+                        writebuf = writebuf[sent:]
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -545,9 +495,9 @@ if __name__ == '__main__':
         help='Port of the SIP server (default 5060)')
     parser.add_argument('--user', required=True,
         help='Username used for authentication at the SIP server')
-    parser.add_argument('--password', required=True,
+    parser.add_argument('--password', default='',
         help='Password used in conjunction with the user for authentication ' +
-             'at the SIP server')
+             'at the SIP server. (default '')')
     parser.add_argument('--display', default='',
         help='Displayed caller id. If empty, the username is used.')
     parser.add_argument('--call', required=True,
