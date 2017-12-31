@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-#   MicroSIP -- A microscopic SIP client
+#   FemtoSIP -- A minimal SIP client
 #   Copyright (C) 2017  Andreas Stöckel
 #
 #   This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
 #   You should have received a copy of the GNU Affero General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import microsip
+import femtosip
 
 REAL_WORLD_RESPONSE = (
     b"\x53\x49\x50\x2f\x32\x2e\x30\x20\x34\x30\x31\x20\x55\x6e\x61\x75" +
@@ -68,7 +68,7 @@ def test_real_world_response():
             'Content-Length': b'0',
         })
 
-    parser = microsip.ResponseParser()
+    parser = femtosip.ResponseParser()
     parser.feed(REAL_WORLD_RESPONSE, callback)
 
     assert(n_callback_called[0] == 1)
@@ -83,7 +83,7 @@ def test_response_with_body():
             'Content-Length': b'10',
         })
 
-    parser = microsip.ResponseParser()
+    parser = femtosip.ResponseParser()
     parser.feed(b'SIP/2.0 200 OK\r\nFoo: Bar\r\nContent-Length: 10\r\n\r\n0123456789', callback)
     assert(n_callback_called[0] == 1)
 
@@ -105,7 +105,7 @@ def test_message_with_spaces():
         n_callback_called[0] += 1
         assert_response(parser, 'SIP/2.0', 200, 'Foo Bar', b'', {})
 
-    parser = microsip.ResponseParser()
+    parser = femtosip.ResponseParser()
     parser.feed(b'SIP/2.0 200 Foo Bar\r\n\r\n', callback)
     assert(n_callback_called[0] == 1)
 

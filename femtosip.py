@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-#   MicroSIP -- A microscopic SIP client
+#   FemtoSIP -- A minimal SIP client
 #   Copyright (C) 2017  Andreas Stöckel
 #
 #   This program is free software: you can redistribute it and/or modify
