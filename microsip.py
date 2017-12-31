@@ -360,6 +360,36 @@ class SIP:
 
         return self.make_sip_packet('CANCEL', uri, fields)
 
+    def make_bye_sip_packet(self, remote_id, remote_host, branch, tag, remote_tag, call_id, seq, realm=None, nonce=None):
+        # Assemble the request uri
+        uri = 'sip:' + remote_id + '@' + remote_host;
+
+        # Assemble the header fields
+        fields = collections.OrderedDict()
+        fields['Via'] = (
+            'SIP/2.0/TCP ' + self.local_ip + ':' + str(self.port) +
+            ';rport;branch=' + branch)
+        fields['From'] = (
+            '<sip:' + self.user + '@' + remote_host + '>;tag=' + tag)
+        fields['To'] = (
+            '<sip:' + remote_id + '@' + remote_host + '>;tag=' + remote_tag)
+        fields['Call-ID'] = str(call_id)
+        fields['CSeq'] = str(seq) + ' BYE'
+        fields['Max-Forwards'] = '70'
+
+        if (not realm is None) and (not nonce is None):
+            fields['Authorization'] = (
+                'Digest username=\"' + self.user + "\", " +
+                          "realm=\"" + realm + "\", " +
+                          "nonce=\"" + nonce + "\", " +
+                            "uri=\"" + uri + "\", " +
+                       "response=\"" + digest_response(
+                            self.user, self.password,
+                            realm, nonce, 'INVITE', uri) + "\", " +
+                      "algorithm=\"MD5\"")
+
+        return self.make_sip_packet('BYE', uri, fields)
+
     def make_socket(self):
         sock = socket.create_connection((self.gateway, self.port))
         sock.setblocking(0)
@@ -380,6 +410,7 @@ class SIP:
             'realm': None,
             'nonce': None,
             'delay_start': 0,
+            'remote_tag': None,
             'ack_stack': []
         }
 
@@ -433,15 +464,15 @@ class SIP:
                     return
                 state['status'] = 'delay' # Phones are ringing, wait
                 state['delay_start'] = time.time()
-            elif res.code == 200: # OK
-                if state['status'] == 'done_send_cancel':
-                    state['done'] = True
-                else:
-                    state['status'] = 'send_cancel'
             elif res.code == 603: # Decline
-                state['status'] = 'send_cancel'
-            elif res.code == 487:
                 state['done'] = True
+            elif res.code == 200:
+                if state['status'] == 'delay':
+                    self.seq += 1
+                    state['remote_tag'] = str(res.fields['To'].split(b';', 2)[-1].split(b'=', 2)[-1], 'ascii')
+                    state['status'] = 'send_bye'
+                if state['status'] == 'done_send_bye':
+                    state['done'] = True
             elif res.code >= 400:
                 error('Unhandled error.\n')
                 state['done'] = True
@@ -465,13 +496,25 @@ class SIP:
                             remote_id, self.gateway,
                             branch, tag, call_id, self.seq)
                     state['status'] = 'done_send_cancel'
+                elif state['status'] == 'send_bye':
+                    sys.stderr.write('Request : BYE sip:'
+                        + remote_id + '@' + self.gateway + '\n')
+                    branch = self.make_branch()
+                    writebuf += self.make_bye_sip_packet(
+                            remote_id, self.gateway,
+                            branch, tag, state['remote_tag'], call_id, self.seq,
+                            state['realm'], state['nonce'])
+                    state['status'] = 'done_send_bye'
                 elif state['status'] == 'delay':
                     if time.time() - state['delay_start'] > delay:
                         state['status'] = 'send_cancel'
 
                 # Check whether we can read or write from the socket
-                can_read, can_write, in_error = \
-                    select.select([sock], [sock], [sock], 10e-3)
+                try:
+                    can_read, can_write, in_error = \
+                        select.select([sock], [sock], [sock], 10e-3)
+                except KeyboardInterrupt:
+                    state['status'] = 'send_cancel'
                 if len(in_error) > 0:
                     error('Socket error')
                 else:
