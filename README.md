@@ -51,11 +51,11 @@ import femtosip
 sip = femtosip.SIP(user, password, gateway, port)
 sip.call(call, delay)
 ```
-The included example script `rpi_sip_doorbell.py` demonstrates the basic usage
-of `femtosip` from another Python program and implements the aforementioned
-door-bell usage scenario. You can use this Python script as a `systemd` service
-with the `rpi_sip_doorbell.service` file. Please configure the script as desired
-by editing the service file. Then install the service by running the following
+The example script `rpi_sip_doorbell.py` demonstrates basic usage of `femtosip`
+from another Python program and implements the aforementioned door-bell scenario.
+You can use this Python script as a `systemd` service with the provided
+`rpi_sip_doorbell.service` file. Please configure the script as desired by
+editing the service file. Then install the service by running the following
 commands from within the cloned Git repository
 ```sh
 sudo mkdir -p /opt/rpi_sip_doorbell/
