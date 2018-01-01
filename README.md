@@ -1,13 +1,20 @@
 # FemtoSIP ‒ A minimal SIP client
 
 *FemtoSIP* is a minimal, incomplete, and utterly broken Python SIP
-implementation with the sole purpose to ring a phone for a certain period of
+implementation with the sole purpose of ringing a phone for a certain period of
 time. This is quite handy for certain home automation tasks, such as signaling
 someone ringing at the door.
 
+A prequisite for the above task is a If a DECT/PSTN base-station which acts as a
+SIP server (such as an AVM FRITZ!Box). These devices often allow to call all
+connected phones under a single internal phone number, such as `*9` in the case
+of the AVM FRITZ!Box. A basic setup for the above task would for example involve
+a Raspberry Pi connected to the door gong (via relay or opto-isolator) which
+calls the `femtosip` Python script whenever the gong is triggered.
+
 ## How to use
 
-*FemtoSIP* solely depends on Python 3 which is present on most Linux
+*FemtoSIP* only depends on Python 3 which is present on most Linux
 installations and available for other platforms as well. To use the program,
 clone this Git repository and execute the `femtosip.py` program. Alternatively,
 instead of using Git, you can [just download `femtosip.py`](https://raw.githubusercontent.com/astoeckel/femtosip/master/femtosip.py).
@@ -36,6 +43,13 @@ If everything works, you should get an output which looks like this:
 2018-01-01 11:41:57,816 request: CANCEL sip:**9@192.168.1.1
 2018-01-01 11:41:57,828 response: SIP/2.0 487 Request Cancelled
 2018-01-01 11:41:57,829 response: IP/2.0 200 OK
+```
+
+Alternatively, you can call `femtosip` from another Python script via
+```python
+import femtosip
+sip = femtosip.SIP(user, password, gateway, port)
+sip.call(call, delay)
 ```
 
 ## Compatibility
