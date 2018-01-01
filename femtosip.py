@@ -26,6 +26,11 @@ import random
 import re
 import sys
 import time
+import logging
+
+# Create the logger
+logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
+logger = logging.getLogger('femtosip')
 
 def format_sip_header_field(key):
     '''
@@ -113,7 +118,7 @@ class ResponseParser:
             try:
                 self.code = int(str(self.code, 'ascii'))
             except:
-                sys.stderr.write('Received invalid response code\n')
+                logger.error('Received invalid response code')
                 self.code = -1
 
             # Convert the protocol and the message to a string
@@ -121,7 +126,7 @@ class ResponseParser:
                 self.protocol = str(self.protocol, 'ascii')
                 self.message = str(self.message, 'ascii')
             except:
-                sys.stderr.write('Invalid protocol or message\n')
+                logger.error('Invalid protocol or message')
 
             # Convert the body to "bytes"
             self.body = bytes(self.body)
@@ -177,11 +182,11 @@ class ResponseParser:
                                     try:
                                         self._content_length = int(self._value)
                                     except:
-                                        sys.stderr.write('Received invalid content-length\n')
+                                        logger.error('Received invalid Content-Length')
                                         self._content_length = 0
                                 self.fields[key] = bytes(self._value.strip())
                             except:
-                                sys.stderr.write('Invalid header key\n')
+                                logger.error('Invalid header key')
                                 raise
                         self._key = bytearray()
                         self._value = bytearray()
@@ -404,16 +409,13 @@ class SIP:
         }
 
         def error(msg):
-            sys.stderr.write('Error: ' + msg)
+            logger.error(msg)
             state['done'] = True
 
         # Function advancing the state machine
         def handle_response(res):
-            # Debug message
-            sys.stderr.write('Response: '
-                + res.protocol + ' '
-                + str(res.code) + ' '
-                + res.message + '\n')
+            logger.info('response: ' + res.protocol + ' ' +
+                        str(res.code) + ' ' + res.message)
 
             if res.code == 401:
                 # Increment the number of tries
@@ -421,7 +423,7 @@ class SIP:
 
                 # Abort if we get more than one authentication error in a row
                 if state['tries'] > 1:
-                    error('Authentication failed. Check password and username.\n')
+                    error('Authentication failed. Check password and username.')
                     return
 
                 # Read realm and nonce
@@ -463,7 +465,7 @@ class SIP:
                 if state['status'] == 'done_send_bye':
                     state['done'] = True
             elif res.code >= 400:
-                error('Unhandled error.\n')
+                error('Unhandled error.')
                 state['done'] = True
 
         writebuf = bytearray()
