@@ -377,17 +377,6 @@ class SIP:
         fields['CSeq'] = str(seq) + ' BYE'
         fields['Max-Forwards'] = '70'
 
-        if (not realm is None) and (not nonce is None):
-            fields['Authorization'] = (
-                'Digest username=\"' + self.user + "\", " +
-                          "realm=\"" + realm + "\", " +
-                          "nonce=\"" + nonce + "\", " +
-                            "uri=\"" + uri + "\", " +
-                       "response=\"" + digest_response(
-                            self.user, self.password,
-                            realm, nonce, 'INVITE', uri) + "\", " +
-                      "algorithm=\"MD5\"")
-
         return self.make_sip_packet('BYE', uri, fields)
 
     def make_socket(self):
