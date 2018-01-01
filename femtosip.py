@@ -540,8 +540,8 @@ if __name__ == '__main__':
         help='Displayed caller id. If empty, the username is used.')
     parser.add_argument('--call', required=True,
         help='Phone number of the endpoint that will be called.')
-    parser.add_argument('--delay', default=10.0, type=float,
-        help='Pause in seconds until the call is canceled (default 10.0)')
+    parser.add_argument('--delay', default=15.0, type=float,
+        help='Pause in seconds until the call is canceled (default 15.0)')
 
     args = parser.parse_args()
 
