@@ -464,6 +464,8 @@ class SIP:
                     state['status'] = 'send_bye'
                 if state['status'] == 'done_send_bye':
                     state['done'] = True
+            elif res.code == 487 and state['status'] == 'done_send_cancel':
+                state['done'] = True
             elif res.code >= 400:
                 error('Unhandled error.')
                 state['done'] = True
