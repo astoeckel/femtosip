@@ -16,15 +16,12 @@
 #   You should have received a copy of the GNU Affero General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import argparse
 import collections
 import hashlib
-import os
 import socket
 import select
 import random
 import re
-import sys
 import time
 import logging
 
@@ -33,9 +30,10 @@ logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 logger = logging.getLogger('femtosip')
 
 def format_sip_header_field(key):
-    '''
-    Brings SIP header fields to a canonical form.
-    '''
+    """
+    Brings SIP header fields to a canonical form. E.g. 'content-length' becomes
+    'Content-Length', cseq becomes 'CSeq' and call-id becomes 'Call-ID'.
+    """
     if isinstance(key, bytes) or isinstance(key, bytearray):
         key = str(key, 'ascii')
     key = key.lower()
@@ -266,10 +264,8 @@ class SIP:
 
         # Initilise the session parameters
         self.seq = 0
-        self.seed = os.urandom(32)
         self.session_id = self.make_random_digits(4);
         self.session_version = self.make_random_digits(4);
-        self.media_port = 7078 + random.randint(0, 100)
 
     @staticmethod
     def make_sip_packet(method, uri, fields, data=b''):
@@ -301,9 +297,6 @@ class SIP:
         for i in range(len):
             res += str(random.randint(1 if i == 0 else 0, 9))
         return res
-
-    def make_tag(self):
-        return self.make_random_digits(10)
 
     def make_branch(self):
         return 'z9hG4bK' + self.make_random_digits(10)
@@ -365,7 +358,7 @@ class SIP:
 
         return self.make_sip_packet('CANCEL', uri, fields)
 
-    def make_bye_sip_packet(self, remote_id, remote_host, branch, tag, remote_tag, call_id, seq, realm=None, nonce=None):
+    def make_bye_sip_packet(self, remote_id, remote_host, branch, tag, remote_tag, call_id, seq):
         # Assemble the request uri
         uri = 'sip:' + remote_id + '@' + remote_host;
 
@@ -393,8 +386,8 @@ class SIP:
     def call(self, remote_id, delay=10.0):
         # Generate a call_id and increase the sequence number
         self.seq += 1
-        tag = self.make_tag()
-        call_id = self.make_random_digits(10)
+        tag = self.make_random_digits()
+        call_id = self.make_random_digits()
 
         # Object containing the state of the s
         state = {
@@ -473,55 +466,64 @@ class SIP:
         writebuf = bytearray()
         with self.make_socket() as sock:
             while not state['done']:
-                if state['status'] == 'send_invite':
-                    sys.stderr.write('Request : INVITE sip:'
-                        + remote_id + '@' + self.gateway + '\n')
-                    branch = self.make_branch()
-                    writebuf += self.make_invite_sip_packet(
-                            remote_id, self.gateway,
-                            branch, tag, call_id, self.seq,
-                            state['realm'], state['nonce'])
-                    state['status'] = 'done_send_invite'
-                elif state['status'] == 'send_cancel':
-                    sys.stderr.write('Request : CANCEL sip:'
-                        + remote_id + '@' + self.gateway + '\n')
-                    writebuf += self.make_cancel_sip_packet(
-                            remote_id, self.gateway,
-                            branch, tag, call_id, self.seq)
-                    state['status'] = 'done_send_cancel'
-                elif state['status'] == 'send_bye':
-                    sys.stderr.write('Request : BYE sip:'
-                        + remote_id + '@' + self.gateway + '\n')
-                    branch = self.make_branch()
-                    writebuf += self.make_bye_sip_packet(
-                            remote_id, self.gateway,
-                            branch, tag, state['remote_tag'], call_id, self.seq,
-                            state['realm'], state['nonce'])
-                    state['status'] = 'done_send_bye'
-                elif state['status'] == 'delay':
-                    if time.time() - state['delay_start'] > delay:
-                        state['status'] = 'send_cancel'
-
-                # Check whether we can read or write from the socket
                 try:
+                    if state['status'] == 'send_invite':
+                        logger.info('request: INVITE sip:'
+                            + remote_id + '@' + self.gateway)
+                        branch = self.make_branch()
+                        writebuf += self.make_invite_sip_packet(
+                                remote_id, self.gateway,
+                                branch, tag, call_id, self.seq,
+                                state['realm'], state['nonce'])
+                        state['status'] = 'done_send_invite'
+                    elif state['status'] == 'send_cancel':
+                        logger.info('request: CANCEL sip:'
+                            + remote_id + '@' + self.gateway)
+                        writebuf += self.make_cancel_sip_packet(
+                                remote_id, self.gateway,
+                                branch, tag, call_id, self.seq)
+                        state['status'] = 'done_send_cancel'
+                    elif state['status'] == 'send_bye':
+                        logger.info('request: BYE sip:'
+                            + remote_id + '@' + self.gateway)
+                        branch = self.make_branch()
+                        writebuf += self.make_bye_sip_packet(
+                                remote_id, self.gateway,
+                                branch, tag, state['remote_tag'],
+                                call_id, self.seq)
+                        state['status'] = 'done_send_bye'
+                    elif state['status'] == 'delay':
+                        if time.time() - state['delay_start'] > delay:
+                            state['status'] = 'send_cancel'
+
+                    # Check whether we can read or write from the socket
                     can_read, can_write, in_error = \
                         select.select([sock], [sock], [sock], 10e-3)
+                    if len(in_error) > 0:
+                        error('Socket error')
+                    else:
+                        if len(can_read) > 0:
+                            readbuf = sock.recv(4096)
+                            ResponseParser().feed(readbuf, handle_response)
+                        if len(can_write) > 0 and len(writebuf) > 0:
+                            sent = sock.send(writebuf)
+                            if sent == 0:
+                                error('Error while writing to socket')
+                            writebuf = writebuf[sent:]
                 except KeyboardInterrupt:
-                    state['status'] = 'send_cancel'
-                if len(in_error) > 0:
-                    error('Socket error')
-                else:
-                    if len(can_read) > 0:
-                        readbuf = sock.recv(4096)
-                        ResponseParser().feed(readbuf, handle_response)
-                    if len(can_write) > 0 and len(writebuf) > 0:
-                        sent = sock.send(writebuf)
-                        if sent == 0:
-                            error('Error while writing to socket')
-                        writebuf = writebuf[sent:]
+                    if state['status'] == 'delay':
+                        state['status'] = 'send_cancel'
+                    else:
+                        state['done'] = True
 
+
+#
+# Main program
+#
 
 if __name__ == '__main__':
+    import argparse
+
     parser = argparse.ArgumentParser(
         description='A microscopic SIP client that can be used to ring a ' + 
                     'phone.')
