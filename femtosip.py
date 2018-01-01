@@ -26,7 +26,6 @@ import time
 import logging
 
 # Create the logger
-logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 logger = logging.getLogger('femtosip')
 
 def format_sip_header_field(key):
@@ -536,8 +535,6 @@ if __name__ == '__main__':
     parser.add_argument('--password', default='',
         help='Password used in conjunction with the user for authentication ' +
              'at the SIP server. (default '')')
-    parser.add_argument('--display', default='',
-        help='Displayed caller id. If empty, the username is used.')
     parser.add_argument('--call', required=True,
         help='Phone number of the endpoint that will be called.')
     parser.add_argument('--delay', default=15.0, type=float,
@@ -545,6 +542,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
     sip = SIP(args.user, args.password, args.gateway, args.port)
     sip.call(args.call, args.delay)
 

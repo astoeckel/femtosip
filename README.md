@@ -12,6 +12,13 @@ of the AVM FRITZ!Box. A basic setup for the above task would for example involve
 a Raspberry Pi connected to the door gong (via relay or opto-isolator) which
 calls the `femtosip` Python script whenever the gong is triggered.
 
+## Features
+
+* No dependencies apart from Python
+* Extremely tiny
+* Runs on Raspberry Pis
+* Likely broken
+
 ## How to use
 
 *FemtoSIP* only depends on Python 3 which is present on most Linux
@@ -50,6 +57,19 @@ Alternatively, you can call `femtosip` from another Python script via
 import femtosip
 sip = femtosip.SIP(user, password, gateway, port)
 sip.call(call, delay)
+```
+The included example script `rpi_sip_doorbell.py` demonstrates the basic usage
+of `femtosip` from another Python program and implements the aforementioned
+door-bell usage scenario. You can use this Python script as a `systemd` service
+with the `rpi_sip_doorbell.service` file. Please configure the script as desired
+by editing the service file. Then install the service by running the following
+commands from within the cloned Git repository
+```sh
+sudo mkdir -p /opt/rpi_sip_doorbell/
+sudo install femtosip.py rpi_sip_doorbell.py /opt/rpi_sip_doorbell
+sudo install rpi_sip_doorbell.service /etc/systemd/system
+sudo systemctl enable rpi_sip_doorbell.service
+sudo systemctl start rpi_sip_doorbell.service
 ```
 
 ## Compatibility
