@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #   FemtoSIP -- A minimal SIP client
-#   Copyright (C) 2017  Andreas Stöckel
+#   Copyright (C) 2017-2018  Andreas Stöckel
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU Affero General Public License as published by
