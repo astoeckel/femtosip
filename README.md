@@ -12,13 +12,6 @@ of the AVM FRITZ!Box. A basic setup for the above task would for example involve
 a Raspberry Pi connected to the door gong (via relay or opto-isolator) which
 calls the `femtosip` Python script whenever the gong is triggered.
 
-## Features
-
-* No dependencies apart from Python
-* Extremely tiny
-* Runs on Raspberry Pis
-* Likely broken
-
 ## How to use
 
 *FemtoSIP* only depends on Python 3 which is present on most Linux

@@ -1,0 +1,10 @@
+[Unit]
+Description=RPI SIP Doorbell
+After=network.target
+
+[Service]
+ExecStart=/opt/rpi_sip_doorbell/rpi_sip_doorbell.py --gateway fritz.box --user SIP_USER --password SIP_PASSWORD --call '**9'
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

@@ -35,8 +35,8 @@ parser.add_argument('--call', required=True,
     help='Phone number of the endpoint that will be called.')
 parser.add_argument('--delay', default=15.0, type=float,
     help='Pause in seconds until the call is canceled (default 15.0)')
-parser.add_argument('--gpio', default=22, type=int,
-    help='GPIO pin which is configured as input (default 22)')
+parser.add_argument('--gpio', default=27, type=int,
+    help='GPIO pin which is configured as input (default 27)')
 
 args = parser.parse_args()
 
@@ -52,9 +52,10 @@ GPIO.setmode(GPIO.BCM)
 GPIO.setup(args.gpio, GPIO.IN)
 
 # Setup an asynchronous callback on pin 22
-got_event = Object(value=False)
+got_event = { 'value': False }
 def gpio_event_callback(_):
-    got_event.value = True
+    logger.info('Door gong triggered.')
+    got_event['value'] = True
 
 GPIO.add_event_detect(args.gpio, GPIO.FALLING,
                       callback=gpio_event_callback,
@@ -66,10 +67,15 @@ sip = femtosip.SIP(args.user, args.password, args.gateway, args.port)
 
 # Loop eternally and trigger a call whenever an event is detected
 import time
-while True:
-    time.sleep(0.1)
-    if got_event.value:
-        logger.info('Detected door ring event.')
-        got_event.value = False
-        sip.call(args.call, args.delay)
+try:
+    logger.info('rpi_sip_doorbell.py ready')
+    while True:
+        time.sleep(0.1)
+        if got_event['value']:
+            logger.info('Detected door ring event, initiating SIP call.')
+            sip.call(args.call, args.delay)
+            logger.info('SIP call ended.')
+            got_event['value'] = False
+except KeyboardInterrupt:
+    logger.info('Program interrupted, exiting')
 

@@ -395,9 +395,9 @@ class SIP:
             'tries': 0,
             'realm': None,
             'nonce': None,
+            'last_request': time.time(),
             'delay_start': 0,
             'remote_tag': None,
-            'ack_stack': []
         }
 
         def error(msg):
@@ -409,6 +409,7 @@ class SIP:
             logger.info('response: ' + res.protocol + ' ' +
                         str(res.code) + ' ' + res.message)
 
+            # Handle the individual response codes
             if res.code == 401:
                 # Increment the number of tries
                 state['tries'] += 1
@@ -430,9 +431,6 @@ class SIP:
                     error('Could not parse "WWW-Authenticate" header, authentication methods other than digest are not supported.')
                 state['realm'] = match.group(1)
                 state['nonce'] = match.group(2)
-
-                # Ack nowledge the error
-                state['ack_stack'].append(res.fields)
 
                 # Try again
                 self.seq += 1
@@ -465,6 +463,7 @@ class SIP:
         writebuf = bytearray()
         with self.make_socket() as sock:
             while not state['done']:
+                now = time.time()
                 try:
                     if state['status'] == 'send_invite':
                         logger.info('request: INVITE sip:'
@@ -492,8 +491,10 @@ class SIP:
                                 call_id, self.seq)
                         state['status'] = 'done_send_bye'
                     elif state['status'] == 'delay':
-                        if time.time() - state['delay_start'] > delay:
+                        if now - state['delay_start'] > delay:
                             state['status'] = 'send_cancel'
+                    elif now - state['last_request'] > 1.0:
+                        error('Timeout while waiting for server response')
 
                     # Check whether we can read or write from the socket
                     can_read, can_write, in_error = \
@@ -505,6 +506,7 @@ class SIP:
                             readbuf = sock.recv(4096)
                             ResponseParser().feed(readbuf, handle_response)
                         if len(can_write) > 0 and len(writebuf) > 0:
+                            state['last_request'] = time.time()
                             sent = sock.send(writebuf)
                             if sent == 0:
                                 error('Error while writing to socket')
