@@ -43,7 +43,7 @@ args = parser.parse_args()
 # Setup logging for this program
 import logging
 logger = logging.getLogger('rpi_sip_doorbell')
-logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
 # Setup GPIO pin 22 as input
 import RPi.GPIO as GPIO
