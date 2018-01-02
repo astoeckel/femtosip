@@ -45,17 +45,25 @@ import logging
 logger = logging.getLogger('rpi_sip_doorbell')
 logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
-# Setup GPIO pin 22 as input
+# Setup the specified GPIO pin as input
 import RPi.GPIO as GPIO
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(args.gpio, GPIO.IN)
 
-# Setup an asynchronous callback on pin 22
+# Setup an asynchronous callback
 got_event = { 'value': False }
 def gpio_event_callback(_):
-    logger.info('Door gong triggered.')
-    got_event['value'] = True
+    # Do some software low-pass filtering
+    int value = 0.0
+    for i in range(0, 32):
+        if GPIO.value(args.gpio):
+            value += 1.0
+        value *= 0.9
+        time.sleep(5e-3)
+    if value > 24.0:
+        logger.info('Door gong triggered.')
+        got_event['value'] = True
 
 GPIO.add_event_detect(args.gpio, GPIO.FALLING,
                       callback=gpio_event_callback,
