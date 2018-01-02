@@ -20,7 +20,7 @@
 import argparse
 parser = argparse.ArgumentParser(
     description='A program for the Raspberry PI calling the given SIP phone ' +
-                'number whenever a alling edge on the given GPIO pin is ' + 
+                'number whenever a falling edge on the given GPIO pin is ' +
                 'detected.')
 parser.add_argument('--gateway', required=True,
     help='Hostname or IP address of the SIP server')
@@ -55,13 +55,13 @@ GPIO.setup(args.gpio, GPIO.IN)
 got_event = { 'value': False }
 def gpio_event_callback(_):
     # Do some software low-pass filtering
-    int value = 0.0
+    value = 0.0
     for i in range(0, 32):
-        if GPIO.value(args.gpio):
+        if not GPIO.input(args.gpio):
             value += 1.0
         value *= 0.9
         time.sleep(5e-3)
-    if value > 24.0:
+    if value > 8.0:
         logger.info('Door gong triggered.')
         got_event['value'] = True
 
