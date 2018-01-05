@@ -7,7 +7,7 @@ someone ringing at the door.
 
 A prequisite for the above task is a DECT/PSTN base-station which acts as a
 SIP server (such as an AVM FRITZ!Box). These devices often allow to call all
-connected phones under a single internal phone number, such as `*9` in the case
+connected phones under a single internal phone number, such as `**9` in the case
 of the AVM FRITZ!Box. A basic setup for the above task would for example involve
 a Raspberry Pi connected to the door gong (via relay or opto-isolator) which
 calls the `femtosip` Python script whenever the gong is triggered.
