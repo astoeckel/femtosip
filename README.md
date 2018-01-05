@@ -5,7 +5,7 @@ implementation with the sole purpose of ringing a phone for a certain period of
 time. This is quite handy for certain home automation tasks, such as signaling
 someone ringing at the door.
 
-A prequisite for the above task is a If a DECT/PSTN base-station which acts as a
+A prequisite for the above task is a DECT/PSTN base-station which acts as a
 SIP server (such as an AVM FRITZ!Box). These devices often allow to call all
 connected phones under a single internal phone number, such as `*9` in the case
 of the AVM FRITZ!Box. A basic setup for the above task would for example involve
