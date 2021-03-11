@@ -30,7 +30,8 @@ python3 femtosip.py \
     --user SIP_USER \             # SIP username
     --password SIP_PASSWORD \     # SIP password
     --call '**9' \                # Which phone number to call
-    --delay 15.0                  # How long to wait til hanging up
+    --delay 15.0 \                # How long to wait til hanging up
+    --displayname MyCustomName    # Set the display name, if different from SIP login
 ```
 
 If everything works, you should get an output which looks like this:
@@ -48,7 +49,7 @@ If everything works, you should get an output which looks like this:
 Alternatively, you can call `femtosip` from another Python script via
 ```python
 import femtosip
-sip = femtosip.SIP(user, password, gateway, port)
+sip = femtosip.SIP(user, password, gateway, port, display_name)
 sip.call(call, delay)
 ```
 The example script `rpi_sip_doorbell.py` demonstrates basic usage of `femtosip`
@@ -71,6 +72,7 @@ This code was hacked together in a few hours and tested with the following SIP
 servers
 
 * AVM FRITZ!Box Fon WLAN 7390
+* AVM FRITZ!Box WLAN 7490
 * linphone 3.6.1 (libexosip2/3.6)
 
 It is not guaranteed to work with any other server. Especially, it uses a TCP
