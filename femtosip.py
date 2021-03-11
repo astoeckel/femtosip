@@ -253,13 +253,14 @@ class SIP:
 
     ALLOW = 'INVITE, ACK, CANCEL, OPTIONS, BYE, REFER, NOTIFY, MESSAGE, SUBSCRIBE, INFO'
 
-    def __init__(self, user, password, gateway, port):
+    def __init__(self, user, password, gateway, port, display_name=''):
         # Copy the parameters
         self.user = user
         self.password = password
         self.local_ip, self.local_port = None, None # To be read dynamically
         self.gateway = gateway
         self.port = port
+        self.display_name = display_name
 
         # Initilise the session parameters
         self.seq = 0
@@ -312,7 +313,7 @@ class SIP:
             'SIP/2.0/TCP ' + self.local_ip + ':' + str(self.port) +
             ';rport;branch=' + branch)
         fields['From'] = (
-            '<sip:' + self.user + '@' + remote_host + '>;tag=' + tag)
+            f'"{self.display_name}" <sip:{self.user}@{remote_host}>;tag={tag}')
         fields['To'] = (
             '<sip:' + remote_id + '@' + remote_host + '>')
         fields['Call-ID'] = str(call_id)
@@ -348,7 +349,7 @@ class SIP:
             'SIP/2.0/TCP ' + self.local_ip + ':' + str(self.port) +
             ';rport;branch=' + branch)
         fields['From'] = (
-            '<sip:' + self.user + '@' + remote_host + '>;tag=' + tag)
+            f'"{self.display_name}" <sip:{self.user}@{remote_host}>;tag={tag}')
         fields['To'] = (
             '<sip:' + remote_id + '@' + remote_host + '>')
         fields['Call-ID'] = str(call_id)
@@ -367,7 +368,7 @@ class SIP:
             'SIP/2.0/TCP ' + self.local_ip + ':' + str(self.port) +
             ';rport;branch=' + branch)
         fields['From'] = (
-            '<sip:' + self.user + '@' + remote_host + '>;tag=' + tag)
+            f'"{self.display_name}" <sip:{self.user}@{remote_host}>;tag={tag}')
         fields['To'] = (
             '<sip:' + remote_id + '@' + remote_host + '>;tag=' + remote_tag)
         fields['Call-ID'] = str(call_id)
@@ -537,6 +538,8 @@ if __name__ == '__main__':
     parser.add_argument('--password', default='',
         help='Password used in conjunction with the user for authentication ' +
              'at the SIP server. (default '')')
+    parser.add_argument('--displayname', default='', help='Alter the displayed ' +
+             'caller name. (defaults to SIP configuration)')
     parser.add_argument('--call', required=True,
         help='Phone number of the endpoint that will be called.')
     parser.add_argument('--delay', default=15.0, type=float,
@@ -545,6 +548,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
-    sip = SIP(args.user, args.password, args.gateway, args.port)
+    sip = SIP(args.user, args.password, args.gateway, args.port, args.displayname)
     sip.call(args.call, args.delay)
 

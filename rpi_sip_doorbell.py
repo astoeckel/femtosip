@@ -31,6 +31,8 @@ parser.add_argument('--user', required=True,
 parser.add_argument('--password', default='',
     help='Password used in conjunction with the user for authentication ' +
          'at the SIP server. (default '')')
+parser.add_argument('--displayname', default='', help='Alter the displayed ' +
+             'caller name. (defaults to SIP configuration)')
 parser.add_argument('--call', required=True,
     help='Phone number of the endpoint that will be called.')
 parser.add_argument('--delay', default=15.0, type=float,
@@ -71,7 +73,7 @@ GPIO.add_event_detect(args.gpio, GPIO.FALLING,
 
 # Setup the SIP client
 import femtosip
-sip = femtosip.SIP(args.user, args.password, args.gateway, args.port)
+sip = femtosip.SIP(args.user, args.password, args.gateway, args.port, args.displayname)
 
 # Loop eternally and trigger a call whenever an event is detected
 import time
