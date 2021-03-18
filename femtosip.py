@@ -253,7 +253,7 @@ class SIP:
 
     ALLOW = 'INVITE, ACK, CANCEL, OPTIONS, BYE, REFER, NOTIFY, MESSAGE, SUBSCRIBE, INFO'
 
-    def __init__(self, user, password, gateway, port, display_name=''):
+    def __init__(self, user, password, gateway, port, display_name=None):
         # Copy the parameters
         self.user = user
         self.password = password
@@ -301,6 +301,16 @@ class SIP:
     def make_branch(self):
         return 'z9hG4bK' + self.make_random_digits(10)
 
+    def make_from_field(self, remote_host:str, tag: str):
+
+        from_field = f'<sip:{self.user}@{remote_host}>;tag={tag}'
+
+        if self.display_name:
+            from_field = f'"{self.display_name}" ' + from_field
+
+        return from_field
+
+
     def make_invite_sip_packet(self,
             remote_id, remote_host,
             branch, tag, call_id, seq, realm=None, nonce=None):
@@ -312,8 +322,7 @@ class SIP:
         fields['Via'] = (
             'SIP/2.0/TCP ' + self.local_ip + ':' + str(self.port) +
             ';rport;branch=' + branch)
-        fields['From'] = (
-            f'"{self.display_name}" <sip:{self.user}@{remote_host}>;tag={tag}')
+        fields['From'] = self.make_from_field(remote_host, tag)
         fields['To'] = (
             '<sip:' + remote_id + '@' + remote_host + '>')
         fields['Call-ID'] = str(call_id)
@@ -348,8 +357,7 @@ class SIP:
         fields['Via'] = (
             'SIP/2.0/TCP ' + self.local_ip + ':' + str(self.port) +
             ';rport;branch=' + branch)
-        fields['From'] = (
-            f'"{self.display_name}" <sip:{self.user}@{remote_host}>;tag={tag}')
+        fields['From'] = self.make_from_field(remote_host, tag)
         fields['To'] = (
             '<sip:' + remote_id + '@' + remote_host + '>')
         fields['Call-ID'] = str(call_id)
@@ -367,8 +375,7 @@ class SIP:
         fields['Via'] = (
             'SIP/2.0/TCP ' + self.local_ip + ':' + str(self.port) +
             ';rport;branch=' + branch)
-        fields['From'] = (
-            f'"{self.display_name}" <sip:{self.user}@{remote_host}>;tag={tag}')
+        fields['From'] = self.make_from_field(remote_host, tag)
         fields['To'] = (
             '<sip:' + remote_id + '@' + remote_host + '>;tag=' + remote_tag)
         fields['Call-ID'] = str(call_id)
@@ -538,7 +545,7 @@ if __name__ == '__main__':
     parser.add_argument('--password', default='',
         help='Password used in conjunction with the user for authentication ' +
              'at the SIP server. (default '')')
-    parser.add_argument('--displayname', default='', help='Alter the displayed ' +
+    parser.add_argument('--displayname', default=None, help='Alter the displayed ' +
              'caller name. (defaults to SIP configuration)')
     parser.add_argument('--call', required=True,
         help='Phone number of the endpoint that will be called.')

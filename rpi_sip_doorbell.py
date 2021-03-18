@@ -31,7 +31,7 @@ parser.add_argument('--user', required=True,
 parser.add_argument('--password', default='',
     help='Password used in conjunction with the user for authentication ' +
          'at the SIP server. (default '')')
-parser.add_argument('--displayname', default='', help='Alter the displayed ' +
+parser.add_argument('--displayname', default=None, help='Alter the displayed ' +
              'caller name. (defaults to SIP configuration)')
 parser.add_argument('--call', required=True,
     help='Phone number of the endpoint that will be called.')
