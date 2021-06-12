@@ -301,12 +301,11 @@ class SIP:
     def make_branch(self):
         return 'z9hG4bK' + self.make_random_digits(10)
 
-    def make_from_field(self, remote_host:str, tag: str):
-
-        from_field = f'<sip:{self.user}@{remote_host}>;tag={tag}'
+    def make_from_field(self, remote_host, tag):
+        from_field = '<sip:' + self.user + '@' + remote_host + '>;tag=' + tag
 
         if self.display_name:
-            from_field = f'"{self.display_name}" ' + from_field
+            from_field = '"' + self.display_name + '" ' + from_field
 
         return from_field
 
