@@ -110,7 +110,14 @@ def test_message_with_spaces():
     assert(n_callback_called[0] == 1)
 
 
+def test_make_from_field():
+    sip1 = femtosip.SIP("foo", "bar", "example.org", "2222")
+    assert(sip1.make_from_field("example2.org", "12345") == "<sip:foo@example2.org>;tag=12345")
+
+    sip2 = femtosip.SIP("foo", "bar", "example.org", "2222", "Erika Musterfrau")
+    assert(sip2.make_from_field("example2.org", "12345") == "\"Erika Musterfrau\" <sip:foo@example2.org>;tag=12345")
+
 test_real_world_response()
 test_response_with_body()
 test_message_with_spaces()
-
+test_make_from_field()
