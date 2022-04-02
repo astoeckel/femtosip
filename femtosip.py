@@ -264,8 +264,8 @@ class SIP:
 
         # Initilise the session parameters
         self.seq = 0
-        self.session_id = self.make_random_digits(4);
-        self.session_version = self.make_random_digits(4);
+        self.session_id = self.make_random_digits(4)
+        self.session_version = self.make_random_digits(4)
 
     @staticmethod
     def make_sip_packet(method, uri, fields, data=b''):
@@ -293,7 +293,7 @@ class SIP:
 
     @staticmethod
     def make_random_digits(len=10):
-        res = '';
+        res = ''
         for i in range(len):
             res += str(random.randint(1 if i == 0 else 0, 9))
         return res
@@ -314,7 +314,7 @@ class SIP:
             remote_id, remote_host,
             branch, tag, call_id, seq, realm=None, nonce=None):
         # Assemble the request uri
-        uri = 'sip:' + remote_id + '@' + remote_host;
+        uri = 'sip:' + remote_id + '@' + remote_host
 
         # Assemble the header fields
         fields = collections.OrderedDict()
@@ -349,7 +349,7 @@ class SIP:
 
     def make_cancel_sip_packet(self, remote_id, remote_host, branch, tag, call_id, seq):
         # Assemble the request uri
-        uri = 'sip:' + remote_id + '@' + remote_host;
+        uri = 'sip:' + remote_id + '@' + remote_host
 
         # Assemble the header fields
         fields = collections.OrderedDict()
@@ -367,7 +367,7 @@ class SIP:
 
     def make_bye_sip_packet(self, remote_id, remote_host, branch, tag, remote_tag, call_id, seq):
         # Assemble the request uri
-        uri = 'sip:' + remote_id + '@' + remote_host;
+        uri = 'sip:' + remote_id + '@' + remote_host
 
         # Assemble the header fields
         fields = collections.OrderedDict()
@@ -430,7 +430,7 @@ class SIP:
                 if not 'WWW-Authenticate' in res.fields:
                     error('Did not find "WWW-Authenticate" field')
                     return
-                auth = str(res.fields['WWW-Authenticate'], 'ascii');
+                auth = str(res.fields['WWW-Authenticate'], 'ascii')
                 match = re.match(
                     r'^[Dd]igest\s+realm="([^"]*)"\s*,\s*nonce="([^"]*)"$',
                     auth)
