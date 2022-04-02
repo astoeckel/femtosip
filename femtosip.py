@@ -432,7 +432,7 @@ class SIP:
                     return
                 auth = str(res.fields['WWW-Authenticate'], 'ascii')
                 match = re.match(
-                    r'^[Dd]igest\s+realm="([^"]*)"\s*,\s*nonce="([^"]*)"$',
+                    r'^[Dd]igest\s+realm="([^"]*)"\s*,\s*nonce="([^"]*)".*$',
                     auth)
                 if not res:
                     error('Could not parse "WWW-Authenticate" header, authentication methods other than digest are not supported.')
