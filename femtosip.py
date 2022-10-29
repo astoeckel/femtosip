@@ -253,14 +253,15 @@ class SIP:
 
     ALLOW = 'INVITE, ACK, CANCEL, OPTIONS, BYE, REFER, NOTIFY, MESSAGE, SUBSCRIBE, INFO'
 
-    def __init__(self, user, password, gateway, port, display_name=None):
+    def __init__(self, user, password, gateway, port, display_name=None, local_ip = None, protocol = "tcp"):
         # Copy the parameters
         self.user = user
         self.password = password
-        self.local_ip, self.local_port = None, None # To be read dynamically
+        self.local_ip, self.local_port = local_ip, None # Allow IP to be specified. Enables use on WAN.
         self.gateway = gateway
         self.port = port
         self.display_name = display_name
+        self.protocol = protocol
 
         # Initilise the session parameters
         self.seq = 0
@@ -319,7 +320,7 @@ class SIP:
         # Assemble the header fields
         fields = collections.OrderedDict()
         fields['Via'] = (
-            'SIP/2.0/TCP ' + self.local_ip + ':' + str(self.port) +
+            'SIP/2.0/' + self.protocol.upper() + ' ' + self.local_ip + ':' + str(self.port) +
             ';rport;branch=' + branch)
         fields['From'] = self.make_from_field(remote_host, tag)
         fields['To'] = (
@@ -328,7 +329,7 @@ class SIP:
         fields['CSeq'] = str(seq) + ' INVITE'
         fields['Contact'] = (
             '<sip:' + self.user + '@' + self.local_ip +
-            ':' + str(self.local_port) + ';transport=tcp>')
+            ':' + str(self.local_port) + ';transport=' + self.protocol.lower() + '>')
         fields['Content-Type'] = 'application/sdp'
         fields['Allow'] = self.ALLOW
         fields['Max-Forwards'] = '70'
@@ -354,7 +355,7 @@ class SIP:
         # Assemble the header fields
         fields = collections.OrderedDict()
         fields['Via'] = (
-            'SIP/2.0/TCP ' + self.local_ip + ':' + str(self.port) +
+            'SIP/2.0/' + self.protocol.upper() + ' ' + self.local_ip + ':' + str(self.port) +
             ';rport;branch=' + branch)
         fields['From'] = self.make_from_field(remote_host, tag)
         fields['To'] = (
@@ -372,7 +373,7 @@ class SIP:
         # Assemble the header fields
         fields = collections.OrderedDict()
         fields['Via'] = (
-            'SIP/2.0/TCP ' + self.local_ip + ':' + str(self.port) +
+            'SIP/2.0/' + self.protocol.upper() + ' ' + self.local_ip + ':' + str(self.port) +
             ';rport;branch=' + branch)
         fields['From'] = self.make_from_field(remote_host, tag)
         fields['To'] = (
@@ -384,9 +385,16 @@ class SIP:
         return self.make_sip_packet('BYE', uri, fields)
 
     def make_socket(self):
-        sock = socket.create_connection((self.gateway, self.port))
+        if self.protocol.lower() == "udp":
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        else:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((self.gateway,self.port))
+        if self.local_ip:
+            self.local_port = sock.getsockname()[1]
+        else:
+            self.local_ip, self.local_port = sock.getsockname()[0:2]
         sock.setblocking(0)
-        self.local_ip, self.local_port = sock.getsockname()[0:2]
         return sock
 
     def call(self, remote_id, delay=10.0):
@@ -546,6 +554,8 @@ if __name__ == '__main__':
              'at the SIP server. (default '')')
     parser.add_argument('--displayname', default=None, help='Alter the displayed ' +
              'caller name. (defaults to SIP configuration)')
+    parser.add_argument('--localip', default=None)
+    parser.add_argument('--protocol', default="tcp")
     parser.add_argument('--call', required=True,
         help='Phone number of the endpoint that will be called.')
     parser.add_argument('--delay', default=15.0, type=float,
@@ -554,6 +564,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
-    sip = SIP(args.user, args.password, args.gateway, args.port, args.displayname)
+    sip = SIP(args.user, args.password, args.gateway, args.port, args.displayname, args.localip, args.protocol)
     sip.call(args.call, args.delay)
 
