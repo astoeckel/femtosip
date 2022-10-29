@@ -5,17 +5,20 @@ implementation with the sole purpose of ringing a phone for a certain period of
 time. This is quite handy for certain home automation tasks, such as signaling
 someone ringing at the door.
 
-A prequisite for the above task is a DECT/PSTN base-station which acts as a
-SIP server (such as an AVM FRITZ!Box). These devices often allow to call all
-connected phones under a single internal phone number, such as `**9` in the case
-of the AVM FRITZ!Box. A basic setup for the above task would for example involve
-a Raspberry Pi connected to the door gong (via relay or opto-isolator) that
-calls the `femtosip` Python script whenever the gong is triggered.
+A prequisite for a task such as ringing all phones in a house is a DECT/PSTN base-station
+that acts as a SIP server, an example being the AVM FRITZ!Box common in Germany.
+For example, the FRITZ!Box has a function where all connected phones can be called
+under a single internal phone number, such as `**9`.
+
+Implementing the ring-on-door-bell task requires some additional hardware, such as
+a Raspberry Pi connected to the door gong via relay or opto-isolator.
+The repository contains an example script that demonstrates this particular use-case.
+
 
 ## How to use
 
-*FemtoSIP* only depends on Python 3 which is present on most Linux
-installations and available for other platforms as well. To use the program,
+*FemtoSIP* only depends on Python 3.6, which is present on most Linux
+installations and available for other platforms as well. To use *FemtoSIP*,
 clone this Git repository and execute the `femtosip.py` program. Alternatively,
 instead of using Git, you can [just download `femtosip.py`](https://raw.githubusercontent.com/astoeckel/femtosip/master/femtosip.py).
 
@@ -75,8 +78,8 @@ servers
 * AVM FRITZ!Box WLAN 7490
 * linphone 3.6.1 (libexosip2/3.6)
 
-It is not guaranteed to work with any other server. Especially, per default,
-*femtosip* uses a TCP connection for SIP, which is not supported by all
+It is not guaranteed to work with any other server. Especially, by default,
+*FemtoSIP* uses a TCP connection for SIP, which is not supported by all
 endpoints. Use `--protocol=udp` if you run into connection problems.
 
 
