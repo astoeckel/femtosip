@@ -75,8 +75,9 @@ servers
 * AVM FRITZ!Box WLAN 7490
 * linphone 3.6.1 (libexosip2/3.6)
 
-It is not guaranteed to work with any other server. Especially, it uses a TCP
-connection for SIP, which is not supported by all endpoints.
+It is not guaranteed to work with any other server. Especially, per default,
+*femtosip* uses a TCP connection for SIP, which is not supported by all
+endpoints. Use `--protocol=udp` if you run into connection problems.
 
 
 ## License
