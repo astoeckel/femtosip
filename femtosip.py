@@ -320,7 +320,7 @@ class SIP:
         # Assemble the header fields
         fields = collections.OrderedDict()
         fields['Via'] = (
-            'SIP/2.0/' + self.protocol.upper() + ' ' + self.local_ip + ':' + str(self.port) +
+            'SIP/2.0/' + self.protocol[:3].upper() + ' [' + self.local_ip + ']:' + str(self.port) +
             ';rport;branch=' + branch)
         fields['From'] = self.make_from_field(remote_host, tag)
         fields['To'] = (
@@ -328,8 +328,8 @@ class SIP:
         fields['Call-ID'] = str(call_id)
         fields['CSeq'] = str(seq) + ' INVITE'
         fields['Contact'] = (
-            '<sip:' + self.user + '@' + self.local_ip +
-            ':' + str(self.local_port) + ';transport=' + self.protocol.lower() + '>')
+            '<sip:' + self.user + '@[' + self.local_ip + ']' +
+            ':' + str(self.local_port) + ';transport=' + self.protocol[:3].lower() + '>')
         fields['Content-Type'] = 'application/sdp'
         fields['Allow'] = self.ALLOW
         fields['Max-Forwards'] = '70'
@@ -355,7 +355,7 @@ class SIP:
         # Assemble the header fields
         fields = collections.OrderedDict()
         fields['Via'] = (
-            'SIP/2.0/' + self.protocol.upper() + ' ' + self.local_ip + ':' + str(self.port) +
+            'SIP/2.0/' + self.protocol[:3].upper() + ' [' + self.local_ip + ']:' + str(self.port) +
             ';rport;branch=' + branch)
         fields['From'] = self.make_from_field(remote_host, tag)
         fields['To'] = (
@@ -373,7 +373,7 @@ class SIP:
         # Assemble the header fields
         fields = collections.OrderedDict()
         fields['Via'] = (
-            'SIP/2.0/' + self.protocol.upper() + ' ' + self.local_ip + ':' + str(self.port) +
+            'SIP/2.0/' + self.protocol[:3].upper() + ' [' + self.local_ip + ']:' + str(self.port) +
             ';rport;branch=' + branch)
         fields['From'] = self.make_from_field(remote_host, tag)
         fields['To'] = (
@@ -387,8 +387,14 @@ class SIP:
     def make_socket(self):
         if self.protocol.lower() == "udp":
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        else:
+        elif self.protocol.lower() == "tcp":
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        elif self.protocol.lower() == "udp6":
+            sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+        elif self.protocol.lower() == "tcp6":
+            sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        else:
+            raise Exception('Unsupported protocol.')
         sock.connect((self.gateway,self.port))
         if self.local_ip:
             self.local_port = sock.getsockname()[1]
@@ -555,7 +561,8 @@ if __name__ == '__main__':
     parser.add_argument('--displayname', default=None,
         help='Alter the displayed caller name. (defaults to SIP configuration)')
     parser.add_argument('--localip', default=None)
-    parser.add_argument('--protocol', default="tcp")
+    parser.add_argument('--protocol', default="tcp", 
+        help='supported protocols: IPv4: udp/tcp, IPv6: udp6/tcp6')
     parser.add_argument('--call', required=True,
         help='Phone number of the endpoint that will be called')
     parser.add_argument('--delay', default=15.0, type=float,
