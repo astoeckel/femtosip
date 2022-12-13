@@ -397,7 +397,7 @@ class SIP:
         sock.setblocking(0)
         return sock
 
-    def call(self, remote_id, delay=10.0):
+    def call(self, remote_id, delay=15.0, timeout=1.0):
         # Generate a call_id and increase the sequence number
         self.seq += 1
         tag = self.make_random_digits()
@@ -508,7 +508,7 @@ class SIP:
                     elif state['status'] == 'delay':
                         if now - state['delay_start'] > delay:
                             state['status'] = 'send_cancel'
-                    elif now - state['last_request'] > 1.0:
+                    elif now - state['last_request'] > timeout:
                         error('Timeout while waiting for server response')
 
                     # Check whether we can read or write from the socket
@@ -552,18 +552,20 @@ if __name__ == '__main__':
     parser.add_argument('--password', default='',
         help='Password used in conjunction with the user for authentication ' +
              'at the SIP server. (default '')')
-    parser.add_argument('--displayname', default=None, help='Alter the displayed ' +
-             'caller name. (defaults to SIP configuration)')
+    parser.add_argument('--displayname', default=None,
+        help='Alter the displayed caller name. (defaults to SIP configuration)')
     parser.add_argument('--localip', default=None)
     parser.add_argument('--protocol', default="tcp")
     parser.add_argument('--call', required=True,
-        help='Phone number of the endpoint that will be called.')
+        help='Phone number of the endpoint that will be called')
     parser.add_argument('--delay', default=15.0, type=float,
         help='Pause in seconds until the call is canceled (default 15.0)')
+    parser.add_argument('--timeout', default=1.0, type=float,
+        help='Period in seconds the SIP server must respond within (default 1.0)')
 
     args = parser.parse_args()
 
     logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
     sip = SIP(args.user, args.password, args.gateway, args.port, args.displayname, args.localip, args.protocol)
-    sip.call(args.call, args.delay)
+    sip.call(args.call, args.delay, args.timeout)
 
