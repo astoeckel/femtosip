@@ -310,7 +310,6 @@ class SIP:
 
         return from_field
 
-
     def make_invite_sip_packet(self,
             remote_id, remote_host,
             branch, tag, call_id, seq, realm=None, nonce=None):
@@ -320,7 +319,7 @@ class SIP:
         # Assemble the header fields
         fields = collections.OrderedDict()
         fields['Via'] = (
-            'SIP/2.0/' + self.protocol[:3].upper() + ' [' + self.local_ip + ']:' + str(self.port) +
+            'SIP/2.0/' + self.protocol.upper() + ' ' + self.local_ip_header + ':' + str(self.port) +
             ';rport;branch=' + branch)
         fields['From'] = self.make_from_field(remote_host, tag)
         fields['To'] = (
@@ -328,8 +327,8 @@ class SIP:
         fields['Call-ID'] = str(call_id)
         fields['CSeq'] = str(seq) + ' INVITE'
         fields['Contact'] = (
-            '<sip:' + self.user + '@[' + self.local_ip + ']' +
-            ':' + str(self.local_port) + ';transport=' + self.protocol[:3].lower() + '>')
+            '<sip:' + self.user + '@' + self.local_ip_header +
+            ':' + str(self.local_port) + ';transport=' + self.protocol.lower() + '>')
         fields['Content-Type'] = 'application/sdp'
         fields['Allow'] = self.ALLOW
         fields['Max-Forwards'] = '70'
@@ -355,7 +354,7 @@ class SIP:
         # Assemble the header fields
         fields = collections.OrderedDict()
         fields['Via'] = (
-            'SIP/2.0/' + self.protocol[:3].upper() + ' [' + self.local_ip + ']:' + str(self.port) +
+            'SIP/2.0/' + self.protocol.upper() + ' ' + self.local_ip_header + ':' + str(self.port) +
             ';rport;branch=' + branch)
         fields['From'] = self.make_from_field(remote_host, tag)
         fields['To'] = (
@@ -373,7 +372,7 @@ class SIP:
         # Assemble the header fields
         fields = collections.OrderedDict()
         fields['Via'] = (
-            'SIP/2.0/' + self.protocol[:3].upper() + ' [' + self.local_ip + ']:' + str(self.port) +
+            'SIP/2.0/' + self.protocol.upper() + ' ' + self.local_ip_header + ':' + str(self.port) +
             ';rport;branch=' + branch)
         fields['From'] = self.make_from_field(remote_host, tag)
         fields['To'] = (
@@ -401,6 +400,7 @@ class SIP:
         else:
             self.local_ip, self.local_port = sock.getsockname()[0:2]
         sock.setblocking(0)
+
         return sock
 
     def call(self, remote_id, delay=15.0, timeout=1.0):
@@ -483,31 +483,36 @@ class SIP:
 
         writebuf = bytearray()
         with self.make_socket() as sock:
+            # IPv6 heuristics
+            self.protocol = self.protocol[:3]
+            self.local_ip_header = '[' + self.local_ip + ']' if ':' in self.local_ip else self.local_ip
+            self.gateway_header = '[' + self.gateway + ']' if ':' in self.gateway else self.gateway
+
             while not state['done']:
                 now = time.time()
                 try:
                     if state['status'] == 'send_invite':
                         logger.info('request: INVITE sip:'
-                            + remote_id + '@' + self.gateway)
+                            + remote_id + '@' + self.gateway_header)
                         branch = self.make_branch()
                         writebuf += self.make_invite_sip_packet(
-                                remote_id, self.gateway,
+                                remote_id, self.gateway_header,
                                 branch, tag, call_id, self.seq,
                                 state['realm'], state['nonce'])
                         state['status'] = 'done_send_invite'
                     elif state['status'] == 'send_cancel':
                         logger.info('request: CANCEL sip:'
-                            + remote_id + '@' + self.gateway)
+                            + remote_id + '@' + self.gateway_header)
                         writebuf += self.make_cancel_sip_packet(
-                                remote_id, self.gateway,
+                                remote_id, self.gateway_header,
                                 branch, tag, call_id, self.seq)
                         state['status'] = 'done_send_cancel'
                     elif state['status'] == 'send_bye':
                         logger.info('request: BYE sip:'
-                            + remote_id + '@' + self.gateway)
+                            + remote_id + '@' + self.gateway_header)
                         branch = self.make_branch()
                         writebuf += self.make_bye_sip_packet(
-                                remote_id, self.gateway,
+                                remote_id, self.gateway_header,
                                 branch, tag, state['remote_tag'],
                                 call_id, self.seq)
                         state['status'] = 'done_send_bye'
@@ -575,4 +580,3 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
     sip = SIP(args.user, args.password, args.gateway, args.port, args.displayname, args.localip, args.protocol)
     sip.call(args.call, args.delay, args.timeout)
-
