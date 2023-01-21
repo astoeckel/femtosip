@@ -28,6 +28,10 @@ import logging
 # Create the logger
 logger = logging.getLogger('femtosip')
 
+###############################################################################
+# Helper functions                                                            #
+###############################################################################
+
 def format_sip_header_field(key):
     """
     Brings SIP header fields to a canonical form. E.g. 'content-length' becomes
@@ -55,6 +59,92 @@ def format_sip_header_field(key):
     return res
 
 
+###############################################################################
+# Digest handling (see RFC 7616)                                              #
+###############################################################################
+
+class DigestTokenizer:
+    def __init__(self):
+        self.buf = ""
+        self.tokens = []
+        self.status = 0
+
+    def emit(self, special=None):
+        if self.buf or (self.status != 0):
+            self.tokens.append((False, self.buf))
+        if special is not None:
+            self.tokens.append((True, special))
+        self.buf = ""
+
+    def feed(self, data, last=True):
+        STATUS_INITIAL = 0
+        STATUS_IN_QUOTES = 1
+        STATUS_IN_QUOTES_ESCAPE = 2
+
+        for i in range(len(data)):
+            is_ws = data[i].isspace()
+            if self.status == STATUS_INITIAL:
+                if is_ws:
+                    self.emit()
+                elif (data[i] == '=') or (data[i] == ","):
+                    self.emit(data[i])
+                elif data[i] == "\"":
+                    self.emit()
+                    self.status = STATUS_IN_QUOTES
+                else:
+                    self.buf += data[i]
+            elif self.status == STATUS_IN_QUOTES:
+                if data[i] == "\"":
+                    self.emit()
+                    self.status = STATUS_INITIAL
+                elif data[i] == "\\":
+                    self.status = STATUS_IN_QUOTES_ESCAPE
+                else:
+                    self.buf += data[i]
+            elif self.status == STATUS_IN_QUOTES_ESCAPE:
+                self.buf += data[i]
+                self.status = STATUS_IN_QUOTES
+
+        if last:
+            self.emit()
+
+        return self.tokens
+
+    @staticmethod
+    def tokenize(data):
+        return DigestTokenizer().feed(data)
+
+
+def parse_digest(data):
+    ST_INITIAL, ST_KEY, ST_EQ, ST_VALUE, ST_COMMA = 0, 1, 2, 3, 4
+    tokens = DigestTokenizer.tokenize(data)
+    status, fields, key = ST_INITIAL, {}, None
+    for token in tokens:
+        if status == ST_INITIAL:
+            if token[0] or token[1].lower() != "digest":
+                return None
+            status = ST_KEY
+        elif status == ST_KEY:
+            if token[0]:
+                return None
+            key = token[1].lower()
+            status = ST_EQ
+        elif status == ST_EQ:
+            if (not token[0]) or (token[1] != "="):
+                return None
+            status = ST_VALUE
+        elif status == ST_VALUE:
+            if token[0]:
+                return None
+            fields[key] = token[1]
+            status = ST_COMMA
+        elif status == ST_COMMA:
+            if (not token[0]) or (token[1] != ","):
+                return None
+            status = ST_KEY
+    return fields
+
+
 def digest_response(user, password, realm, nonce, method, uri):
     ha1 = hashlib.md5()
     ha1.update(
@@ -77,6 +167,10 @@ def digest_response(user, password, realm, nonce, method, uri):
     )
     return res.hexdigest().lower()
 
+
+##############################################################################
+# SIP response (i.e., HTTP-like header) parser                               #
+##############################################################################
 
 class ResponseParser:
     """
@@ -243,6 +337,10 @@ class ResponseParser:
         # Return true if the callback has been called
         return response[0]
 
+
+###############################################################################
+# Main SIP state-machine                                                      #
+###############################################################################
 
 class SIP:
     """
@@ -448,13 +546,11 @@ class SIP:
                     error('Did not find "WWW-Authenticate" field')
                     return
                 auth = str(res.fields['WWW-Authenticate'], 'ascii')
-                match = re.match(
-                    r'^[Dd]igest\s+realm="([^"]*)"\s*,\s*nonce="([^"]*)".*$',
-                    auth)
-                if not res:
+                auth_fields = parse_digest(auth)
+                if (auth_fields is None) or ('realm' not in auth_fields) or ('nonce' not in auth_fields):
                     error('Could not parse "WWW-Authenticate" header, authentication methods other than digest are not supported.')
-                state['realm'] = match.group(1)
-                state['nonce'] = match.group(2)
+                state['realm'] = auth_fields['realm']
+                state['nonce'] = auth_fields['nonce']
 
                 # Try again
                 self.seq += 1

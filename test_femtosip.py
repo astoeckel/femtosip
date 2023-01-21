@@ -42,6 +42,23 @@ REAL_WORLD_RESPONSE = (
     b"\x49\x54\x5a\x21\x4f\x53\x0d\x0a\x43\x6f\x6e\x74\x65\x6e\x74\x2d" +
     b"\x4c\x65\x6e\x67\x74\x68\x3a\x20\x30\x0d\x0a\x0d\x0a")
 
+RFC_DIGEST = """Digest username="Mufasa" ,
+       REALM="http-auth@example.org" ,
+       uri=   "/dir/index.html" ,    
+       alGorIthm = MD5 ,  
+       noncE\t = "7ypf/xlj9XXwfDPEoM4URrv/xwf94BcCAzFZH4GiTo0v"\t,  
+       nc=    00000001 ,
+       CNonce = "f2/wE4q74E6zIJEtWaHKaf5wv/H5QzzpXusqGemxURZJ" , 
+       QoP= auth ,
+       response= "8ca523f5e9506fed4657c9700eebdbec" ,
+       Opaque="FQhe/qaU925kfnzjCev0ciny7QMkPqMAFRtzCUYo5tdS",
+       foo_WITH_ws="a b ,,=\\"c"
+"""
+
+RFC_DIGEST_TOKENS = [(False, 'Digest'), (False, 'username'), (True, '='), (False, 'Mufasa'), (True, ','), (False, 'REALM'), (True, '='), (False, 'http-auth@example.org'), (True, ','), (False, 'uri'), (True, '='), (False, '/dir/index.html'), (True, ','), (False, 'alGorIthm'), (True, '='), (False, 'MD5'), (True, ','), (False, 'noncE'), (True, '='), (False, '7ypf/xlj9XXwfDPEoM4URrv/xwf94BcCAzFZH4GiTo0v'), (True, ','), (False, 'nc'), (True, '='), (False, '00000001'), (True, ','), (False, 'CNonce'), (True, '='), (False, 'f2/wE4q74E6zIJEtWaHKaf5wv/H5QzzpXusqGemxURZJ'), (True, ','), (False, 'QoP'), (True, '='), (False, 'auth'), (True, ','), (False, 'response'), (True, '='), (False, '8ca523f5e9506fed4657c9700eebdbec'), (True, ','), (False, 'Opaque'), (True, '='), (False, 'FQhe/qaU925kfnzjCev0ciny7QMkPqMAFRtzCUYo5tdS'), (True, ','), (False, 'foo_WITH_ws'), (True, '='), (False, 'a b ,,="c')]
+
+RFC_DIGEST_FIELDS = {'username': 'Mufasa', 'realm': 'http-auth@example.org', 'uri': '/dir/index.html', 'algorithm': 'MD5', 'nonce': '7ypf/xlj9XXwfDPEoM4URrv/xwf94BcCAzFZH4GiTo0v', 'nc': '00000001', 'cnonce': 'f2/wE4q74E6zIJEtWaHKaf5wv/H5QzzpXusqGemxURZJ', 'qop': 'auth', 'response': '8ca523f5e9506fed4657c9700eebdbec', 'opaque': 'FQhe/qaU925kfnzjCev0ciny7QMkPqMAFRtzCUYo5tdS', 'foo_with_ws': 'a b ,,="c'}
+
 def assert_response(parser, protocol, code, message, body, fields):
     assert(parser.protocol == protocol)
     assert(parser.code == code)
@@ -139,8 +156,29 @@ def test_make_from_field():
     sip2 = femtosip.SIP("foo", "bar", "example.org", "2222", "Erika Musterfrau")
     assert(sip2.make_from_field("example2.org", "12345") == "\"Erika Musterfrau\" <sip:foo@example2.org>;tag=12345")
 
+
+def test_digest_tokenizer():
+    assert femtosip.DigestTokenizer.tokenize(RFC_DIGEST) == RFC_DIGEST_TOKENS
+
+
+def test_parse_digest():
+    assert femtosip.parse_digest(RFC_DIGEST) == RFC_DIGEST_FIELDS
+
+
+def test_parse_asterisk_digest():
+    fields = femtosip.parse_digest('Digest algorithm=MD5, realm="asterisk", nonce="0afa88e9"')
+    assert fields == {
+        "algorithm": "MD5",
+        "realm": "asterisk",
+        "nonce": "0afa88e9"
+    }
+
+
 test_real_world_response()
 test_real_world_response_chunks()
 test_response_with_body()
 test_message_with_spaces()
 test_make_from_field()
+test_digest_tokenizer()
+test_parse_digest()
+test_parse_asterisk_digest()
