@@ -123,25 +123,21 @@ def parse_digest(data):
         if status == ST_INITIAL:
             if token[0] or token[1].lower() != "digest":
                 return None
-            status = ST_KEY
         elif status == ST_KEY:
             if token[0]:
                 return None
             key = token[1].lower()
-            status = ST_EQ
         elif status == ST_EQ:
             if (not token[0]) or (token[1] != "="):
                 return None
-            status = ST_VALUE
         elif status == ST_VALUE:
             if token[0]:
                 return None
             fields[key] = token[1]
-            status = ST_COMMA
         elif status == ST_COMMA:
             if (not token[0]) or (token[1] != ","):
                 return None
-            status = ST_KEY
+        status = max(1, (status + 1) % 5) # Wrap around back to ST_KEY
     return fields
 
 
