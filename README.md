@@ -1,26 +1,28 @@
 # FemtoSIP ‒ A minimal SIP client
 
 *FemtoSIP* is a minimal, incomplete, and utterly broken Python SIP
-implementation with the sole purpose of ringing a phone for a certain period of
-time. This is quite handy for certain home automation tasks, such as signaling
-someone ringing at the door.
+implementation with the sole purpose of calling a SIP phone and immediately
+hanging up.  This is quite handy for certain home automation tasks,
+such as signaling that someone is ringing the doorbell.
 
-A prequisite for a task such as ringing all phones in a house is a DECT/PSTN base-station
-that acts as a SIP server, an example being the AVM FRITZ!Box common in Germany.
-For example, the FRITZ!Box has a function where all connected phones can be called
+To call all phones in the house, *FemtoSIP* needs to be able to connect to a
+DECT/PSTN base-station that acts as a SIP server, for example the AVM FRITZ!Box
+common in Germany.
+The FRITZ!Box has a function where all connected phones can be called
 under a single internal phone number, such as `**9`.
 
 Implementing the ring-on-door-bell task requires some additional hardware, such as
-a Raspberry Pi connected to the door gong via relay or opto-isolator.
-The repository contains an example script that demonstrates this particular use-case.
+a Raspberry Pi connected to the door gong via relay or opto-isolator; the repository
+contains an example script that demonstrates this particular use-case.
+The script has also been successfully used in conjunction with [OpenHAB](https://www.openhab.org/).
 
 
 ## How to use
 
-*FemtoSIP* only depends on Python 3.6, which is present on most Linux
-installations and available for other platforms as well. To use *FemtoSIP*,
-clone this Git repository and execute the `femtosip.py` program. Alternatively,
-instead of using Git, you can [just download `femtosip.py`](https://raw.githubusercontent.com/astoeckel/femtosip/master/femtosip.py).
+*FemtoSIP* consists of a single python file `femtosip.py` and only depends on Python 3.6 or newer.
+Python 3.6 should be present on most Linux installations and is available for other platforms as well.
+To use *FemtoSIP*, clone this Git repository and execute the `femtosip.py` program.
+Alternatively, instead of using Git, you can [just download `femtosip.py` directly](https://raw.githubusercontent.com/astoeckel/femtosip/master/femtosip.py).
 
 ```sh
 # Clone the program and go into the femtosip directory
@@ -87,7 +89,7 @@ endpoints. Use `--protocol=udp` if you run into connection problems.
 
 ```
 FemtoSIP -- A minimal SIP client
-Copyright (C) 2017-2018  Andreas Stöckel
+Copyright (C) 2017-2023  Andreas Stöckel
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
