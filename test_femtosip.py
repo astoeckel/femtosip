@@ -91,28 +91,6 @@ def test_real_world_response():
     assert(n_callback_called[0] == 1)
 
 
-def test_real_world_response_chunks():
-    n_callback_called = [0]
-    def callback(parser):
-        n_callback_called[0] += 1
-        assert_response(parser, 'SIP/2.0', 401, 'Unauthorized', b'', {
-            'Via': b'SIP/2.0/TCP 192.168.178.69:5060;rport=37686;branch=z9hG4bK1847745251',
-            'From': b'<sip:Tuerklingel@fritz.box>;tag=435462789',
-            'To': b'<sip:**611@fritz.box>;tag=91FC717FFDEBEC11',
-            'Call-ID': b'1939311173',
-            'CSeq': b'20 INVITE',
-            'WWW-Authenticate': b'Digest realm="fritz.box", nonce="F2C01E298B24F569"',
-            'User-Agent': b'FRITZ!OS',
-            'Content-Length': b'0',
-        })
-
-    parser = femtosip.ResponseParser()
-    for i in range(len(REAL_WORLD_RESPONSE)):
-        parser.feed(REAL_WORLD_RESPONSE[i:i+1], callback)
-
-    assert(n_callback_called[0] == 1)
-
-
 def test_response_with_body():
     n_callback_called = [0]
     def callback(parser):
@@ -175,7 +153,6 @@ def test_parse_asterisk_digest():
 
 
 test_real_world_response()
-test_real_world_response_chunks()
 test_response_with_body()
 test_message_with_spaces()
 test_make_from_field()

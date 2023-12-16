@@ -357,9 +357,6 @@ class SIP:
         self.display_name = display_name
         self.protocol = protocol
 
-        # Create the response parser instance
-        self.response_parser = ResponseParser()
-
         # Initilise the session parameters
         self.seq = 0
         self.session_id = self.make_random_digits(4)
@@ -625,7 +622,7 @@ class SIP:
                     else:
                         if len(can_read) > 0:
                             readbuf = sock.recv(4096)
-                            self.response_parser.feed(readbuf, handle_response)
+                            ResponseParser().feed(readbuf, handle_response)
                         if len(can_write) > 0 and len(writebuf) > 0:
                             state['last_request'] = time.time()
                             sent = sock.send(writebuf)
